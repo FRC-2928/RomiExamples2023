@@ -57,10 +57,10 @@ public class Drivetrain extends SubsystemBase {
   private final Field2d m_field2d = new Field2d();
 
   // Pose estimator State Space way for tracking the robot pose
-  private DifferentialDrivePoseEstimator m_estimator = new DifferentialDrivePoseEstimator(new Rotation2d(), new Pose2d(),
-        new MatBuilder<>(Nat.N5(), Nat.N1()).fill(0.02, 0.02, 0.01, 0.02, 0.02), // State measurement standard deviations. X, Y, theta.
-        new MatBuilder<>(Nat.N3(), Nat.N1()).fill(0.02, 0.02, 0.01), // Local measurement standard deviations. Left encoder, right encoder, gyro.
-        new MatBuilder<>(Nat.N3(), Nat.N1()).fill(0.1, 0.1, 0.01)); // Global measurement standard deviations. X, Y, and theta.
+  // private DifferentialDrivePoseEstimator m_estimator = new DifferentialDrivePoseEstimator(new Rotation2d(), new Pose2d(),
+  //       new MatBuilder<>(Nat.N5(), Nat.N1()).fill(0.02, 0.02, 0.01, 0.02, 0.02), // State measurement standard deviations. X, Y, theta.
+  //       new MatBuilder<>(Nat.N3(), Nat.N1()).fill(0.02, 0.02, 0.01), // Local measurement standard deviations. Left encoder, right encoder, gyro.
+  //       new MatBuilder<>(Nat.N3(), Nat.N1()).fill(0.1, 0.1, 0.01)); // Global measurement standard deviations. X, Y, and theta.
 
   // Show a field diagram for tracking Pose estimation
   private final Field2d m_estimatedField2d = new Field2d();
@@ -307,10 +307,10 @@ public class Drivetrain extends SubsystemBase {
     // m_field2d.setRobotPose(poseOffset);
 
     // Updates the the Unscented Kalman Filter using only wheel encoder information.
-    m_estimator.update(m_gyro.getRotation2d(), 
-                      // getWheelSpeeds(), 
-                       m_leftEncoder.getDistance(), 
-                       m_rightEncoder.getDistance());
+    // m_estimator.update(m_gyro.getRotation2d(), 
+    //                   // getWheelSpeeds(), 
+    //                    m_leftEncoder.getDistance(), 
+    //                    m_rightEncoder.getDistance());
 
 
     // // Offset the pose to start 1.5 meters on the Y axis
