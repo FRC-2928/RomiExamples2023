@@ -5,6 +5,7 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
@@ -165,6 +166,7 @@ public class Drivetrain extends SubsystemBase {
    * @return The current wheel speeds
    */
   public DifferentialDriveWheelSpeeds getWheelSpeeds() {
+    // Convert to wheel speeds
     return new DifferentialDriveWheelSpeeds(m_leftEncoder.getRate(), m_rightEncoder.getRate());
   }
   
@@ -238,8 +240,13 @@ public class Drivetrain extends SubsystemBase {
   public void publishTelemetry() {
         
     // Display the meters per/second for each wheel and the heading
-    SmartDashboard.putNumber("Left Wheel Speed", m_leftEncoder.getRate());
-    SmartDashboard.putNumber("Right Wheel Speed", m_rightEncoder.getRate());
+    DifferentialDriveWheelSpeeds wheelSpeeds = getWheelSpeeds();
+    SmartDashboard.putNumber("Left wheel speed", wheelSpeeds.leftMetersPerSecond);
+    SmartDashboard.putNumber("Right wheel speed", wheelSpeeds.leftMetersPerSecond);
+
+    // SmartDashboard.putNumber("Left Wheel Speed", m_leftEncoder.getRate());
+    // SmartDashboard.putNumber("Right Wheel Speed", m_rightEncoder.getRate());
+
     SmartDashboard.putNumber("Heading", getHeading());
 
     // Display the distance travelled for each wheel
