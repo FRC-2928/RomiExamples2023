@@ -8,6 +8,7 @@ import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -26,6 +27,9 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.DrivetrainConstants;
 import frc.robot.sensors.RomiGyro;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
+import java.lang.constant.Constable;
+
 import edu.wpi.first.math.MatBuilder;
 import edu.wpi.first.math.Nat;
 
@@ -56,11 +60,7 @@ public class Drivetrain extends SubsystemBase {
   // Show a field diagram for tracking odometry
   private final Field2d m_field2d = new Field2d();
 
-  // Pose estimator State Space way for tracking the robot pose
-  // private DifferentialDrivePoseEstimator m_estimator = new DifferentialDrivePoseEstimator(new Rotation2d(), new Pose2d(),
-  //       new MatBuilder<>(Nat.N5(), Nat.N1()).fill(0.02, 0.02, 0.01, 0.02, 0.02), // State measurement standard deviations. X, Y, theta.
-  //       new MatBuilder<>(Nat.N3(), Nat.N1()).fill(0.02, 0.02, 0.01), // Local measurement standard deviations. Left encoder, right encoder, gyro.
-  //       new MatBuilder<>(Nat.N3(), Nat.N1()).fill(0.1, 0.1, 0.01)); // Global measurement standard deviations. X, Y, and theta.
+  private DifferentialDrivePoseEstimator m_poseEstimator;
 
   // Show a field diagram for tracking Pose estimation
   private final Field2d m_estimatedField2d = new Field2d();
@@ -101,11 +101,18 @@ public class Drivetrain extends SubsystemBase {
     m_rightEncoder.setDistancePerPulse((Math.PI * DrivetrainConstants.kWheelDiameterMeters) / DrivetrainConstants.kCountsPerRevolution);
     resetEncoders();
 
-    Pose2d initialPose = new Pose2d(0, 1.5, m_gyro.getRotation2d()); 
+    Pose2d initialPose = new Pose2d(0, 1.5, m_gyro.getRotation2d());    
+    m_field2d.setRobotPose(initialPose);
+
     m_odometry = new DifferentialDriveOdometry(m_gyro.getRotation2d(), 
                    getLeftDistanceMeters(), getRightDistanceMeters(), 
                    initialPose);
-    m_field2d.setRobotPose(initialPose);
+
+    m_poseEstimator = new DifferentialDrivePoseEstimator(DrivetrainConstants.kDriveKinematics,
+                    m_gyro.getRotation2d(), 
+                    getLeftDistanceMeters(), getRightDistanceMeters(), 
+                    initialPose);
+
     SmartDashboard.putData("field", m_field2d);
     SmartDashboard.putData("fieldEstimate", m_estimatedField2d);
   }
@@ -177,13 +184,10 @@ public class Drivetrain extends SubsystemBase {
   public void zeroHeading() {
     m_gyro.reset();
   }
-  
-  // -----------------------------------------------------------
-  // Process Logic
-  // -----------------------------------------------------------
-  @Override
-  public void periodic() {
-    publishTelemetry();
+
+  /** Reset the gyro. */
+  public void resetGyro() {
+    m_gyro.reset();
   }
 
   // -----------------------------------------------------------
@@ -279,55 +283,6 @@ public class Drivetrain extends SubsystemBase {
     return m_gyro.getAngleZ();
   }
 
-  /** Reset the gyro. */
-  public void resetGyro() {
-    m_gyro.reset();
-  }
-
-  /**  
-   * Publishes telemetry data to the Network Tables for use
-   * in Shuffleboard and the Simulator
-  */
-  public void publishTelemetry() {
-    
-    // Update the odometry in the periodic block
-    Pose2d currentPose = m_odometry.update(m_gyro.getRotation2d(), 
-                                           m_leftEncoder.getDistance(), 
-                                           m_rightEncoder.getDistance());
-    
-    m_field2d.setRobotPose(currentPose);  
-    
-    // Offset the pose to start 1.5 meters on the Y axis
-    // double yPoseOffset = 1.5;
-    // Pose2d currentPose = getPose();
-    // Pose2d poseOffset = new Pose2d(currentPose.getX(), 
-    //                                currentPose.getY() + yPoseOffset, 
-    //                                currentPose.getRotation());
-    // // Update the Field2D object (so that we can visualize this in sim)
-    // m_field2d.setRobotPose(poseOffset);
-
-    // Updates the the Unscented Kalman Filter using only wheel encoder information.
-    // m_estimator.update(m_gyro.getRotation2d(), 
-    //                   // getWheelSpeeds(), 
-    //                    m_leftEncoder.getDistance(), 
-    //                    m_rightEncoder.getDistance());
-
-
-    // // Offset the pose to start 1.5 meters on the Y axis
-    // Pose2d currentEstimatedPose = getEstimatedPose();
-    // Pose2d estimatedPoseOffset = new Pose2d(currentEstimatedPose.getX(), 
-    //                                         currentEstimatedPose.getY() + yPoseOffset, 
-    //                                         currentEstimatedPose.getRotation());
-
-    // // Update the Field2D object (so that we can visualize this in sim)
-    // m_estimatedField2d.setRobotPose(estimatedPoseOffset);
-
-    // Display the meters per/second for each wheel and the heading
-    SmartDashboard.putNumber("Left Encoder Velocity", m_leftEncoder.getRate());
-    SmartDashboard.putNumber("Right Encoder Velocity", m_rightEncoder.getRate());
-    SmartDashboard.putNumber("Heading", getHeading());
-  }
-
   /**
    * Returns the currently estimated pose of the robot.
    * @return The pose
@@ -385,4 +340,74 @@ public class Drivetrain extends SubsystemBase {
   public double getTurnRate() {
     return -m_gyro.getRate();
   }
+
+  public Pose2d getLimelightPose(){
+    return new Pose2d(); 
+  }
+
+  // -----------------------------------------------------------
+  // Process Logic
+  // -----------------------------------------------------------
+  @Override
+  public void periodic() {
+    // Update the odometry in the periodic block
+    m_odometry.update(m_gyro.getRotation2d(), 
+                      m_leftEncoder.getDistance(), 
+                      m_rightEncoder.getDistance());
+
+    m_poseEstimator.update(m_gyro.getRotation2d(),
+                           m_leftEncoder.getDistance(),
+                           m_rightEncoder.getDistance());
+
+    // Also apply vision measurements. We use 0.3 seconds in the past as an example -- on
+    // a real robot, this must be calculated based either on latency or timestamps.
+    m_poseEstimator.addVisionMeasurement(
+        getLimelightPose(),
+        Timer.getFPGATimestamp() - 0.3);
+
+    publishTelemetry();
+  }
+
+  /**  
+   * Publishes telemetry data to the Network Tables for use
+   * in Shuffleboard and the Simulator
+  */
+  public void publishTelemetry() {
+    
+    m_field2d.setRobotPose(getPose());  
+    
+    m_estimatedField2d.setRobotPose(m_poseEstimator.getEstimatedPosition());
+  
+  
+    // Offset the pose to start 1.5 meters on the Y axis
+    // double yPoseOffset = 1.5;
+    // Pose2d currentPose = getPose();
+    // Pose2d poseOffset = new Pose2d(currentPose.getX(), 
+    //                                currentPose.getY() + yPoseOffset, 
+    //                                currentPose.getRotation());
+    // // Update the Field2D object (so that we can visualize this in sim)
+    // m_field2d.setRobotPose(poseOffset);
+
+    // Updates the the Unscented Kalman Filter using only wheel encoder information.
+    // m_estimator.update(m_gyro.getRotation2d(), 
+    //                   // getWheelSpeeds(), 
+    //                    m_leftEncoder.getDistance(), 
+    //                    m_rightEncoder.getDistance());
+
+
+    // // Offset the pose to start 1.5 meters on the Y axis
+    // Pose2d currentEstimatedPose = getEstimatedPose();
+    // Pose2d estimatedPoseOffset = new Pose2d(currentEstimatedPose.getX(), 
+    //                                         currentEstimatedPose.getY() + yPoseOffset, 
+    //                                         currentEstimatedPose.getRotation());
+
+    // // Update the Field2D object (so that we can visualize this in sim)
+    // m_estimatedField2d.setRobotPose(estimatedPoseOffset);
+
+    // Display the meters per/second for each wheel and the heading
+    SmartDashboard.putNumber("Left Encoder Velocity", m_leftEncoder.getRate());
+    SmartDashboard.putNumber("Right Encoder Velocity", m_rightEncoder.getRate());
+    SmartDashboard.putNumber("Heading", getHeading());
+  }
+
 }
