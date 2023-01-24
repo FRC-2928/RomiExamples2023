@@ -57,13 +57,14 @@ public final class Constants {
                                 kvVoltSecondsPerMeter, 
                                 kaVoltSecondsSquaredPerMeter);
 
+    // -------- Trajectory constants --------------------
+
+    // Voltage constraints
     public static final DifferentialDriveVoltageConstraint kAutoVoltageConstraint =
       new DifferentialDriveVoltageConstraint(
           kFeedForward,
           kDriveKinematics,
           10);
-
-    // -------- Trajectory constants --------------------
 
     // Setup trajectory constraints
     public static final TrajectoryConfig kTrajectoryConfig =

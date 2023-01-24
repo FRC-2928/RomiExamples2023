@@ -99,6 +99,25 @@ public class RobotContainer {
   }
 
   /**
+   * Drives a curved path
+   */
+  public Trajectory curvedTrajectory() {
+    // Note that all coordinates are in meters, and follow NWU conventions.
+    Trajectory trajectory = TrajectoryGenerator.generateTrajectory(
+        // Start at the origin facing the +X direction
+        new Pose2d(0, 0, new Rotation2d(0)),
+        List.of(
+            new Translation2d(0.5, 0.25), // 1 Left
+            new Translation2d(1.0, -0.25), // 2 Right
+            new Translation2d(1.5, 0.25)  // 3 Left           
+        ),
+        new Pose2d(-0.0, -0.2, new Rotation2d(Math.PI)),
+        DrivetrainConstants.kTrajectoryConfig);
+
+    return trajectory;
+  }
+
+  /**
    * Navigates three cone placed 0.5 meters apart.
    * It should end up back at its starting point
    *
@@ -180,6 +199,32 @@ public class RobotContainer {
   } 
 
   /**
+   * Drives the the designated dropoff point
+   */
+  public Trajectory navigateToDropoffTrajectory(Pose2d startPose, 
+                                                Pose2d endPose,
+                                                int direction) {
+
+    // Note that all coordinates are in meters, and follow NWU conventions.
+    Translation2d leftWaypoint1 = new Translation2d(2.5, 0.75);
+    Translation2d leftWaypoint2 = new Translation2d(1.5, 0.75);
+    Translation2d rightWaypoint1 = new Translation2d(2.5, 3.75);
+    Translation2d rightWaypoint2 = new Translation2d(1.5, 3.75);
+
+    Trajectory trajectory = TrajectoryGenerator.generateTrajectory(
+        // Start at the origin facing the +X direction
+        startPose,
+        List.of(
+            leftWaypoint1, // 1 Left
+            leftWaypoint2 // 2 Right          
+        ),
+        endPose,
+        DrivetrainConstants.kTrajectoryConfig);
+
+    return trajectory;
+  }
+
+  /**
    * Use this method to define your button->command mappings. Buttons can be created by
    * instantiating a {@link GenericHID} or one of its subclasses ({@link
    * edu.wpi.first.wpilibj.Joystick} or {@link XboxController}), and then passing it to a {@link
@@ -201,6 +246,9 @@ public class RobotContainer {
     m_chooser.addOption("Calibrate Trajectory", new RunRamseteTrajectory(m_drivetrain, calibrateTrajectory()));
     m_chooser.addOption("Drive Square Trajectory", new RunRamseteTrajectory(m_drivetrain, driveSquareTrajectory()));
     m_chooser.addOption("Old Calibrate Trajectory", generateRamseteCommand(calibrateTrajectory()));
+    m_chooser.addOption("Drive To Dropoff", new RunRamseteTrajectory(m_drivetrain, navigateToDropoffTrajectory(m_drivetrain.getPose(), // Start
+                                                                                                                    new Pose2d(), // End assigned to a button 
+                                                                                                                    0))); // Way around the balance platform
     
     SmartDashboard.putData(m_chooser);
   }
