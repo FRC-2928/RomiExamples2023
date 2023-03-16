@@ -32,6 +32,7 @@ import java.lang.constant.Constable;
 
 import edu.wpi.first.math.MatBuilder;
 import edu.wpi.first.math.Nat;
+import edu.wpi.first.math.VecBuilder;
 
 public class Drivetrain extends SubsystemBase {
 
@@ -111,7 +112,9 @@ public class Drivetrain extends SubsystemBase {
     m_poseEstimator = new DifferentialDrivePoseEstimator(DrivetrainConstants.kDriveKinematics,
                     m_gyro.getRotation2d(), 
                     getLeftDistanceMeters(), getRightDistanceMeters(), 
-                    initialPose);
+                    initialPose,
+                    VecBuilder.fill(0.02, 0.02, 0.01),
+                    VecBuilder.fill(0.1, 0.1, 0.1));
 
     SmartDashboard.putData("field", m_field2d);
     SmartDashboard.putData("fieldEstimate", m_estimatedField2d);
