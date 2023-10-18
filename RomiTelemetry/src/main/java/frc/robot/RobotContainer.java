@@ -94,6 +94,6 @@ public class RobotContainer {
    */
   public Command getArcadeDriveCommand() {
     return new ArcadeDrive(
-        m_drivetrain, () -> -m_joystick.getRawAxis(1), () -> m_joystick.getRawAxis(2));
+        m_drivetrain, () -> -m_joystick.getRawAxis(1), () -> m_joystick.getRawAxis(4));
   }
 }
