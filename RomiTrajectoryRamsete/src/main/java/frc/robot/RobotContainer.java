@@ -17,6 +17,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import frc.robot.Constants.ControlConstants;
 import frc.robot.Constants.DrivetrainConstants;
 import frc.robot.commands.ArcadeDrive;
+import frc.robot.commands.AutonomousDistance;
 import frc.robot.commands.RunRamseteTrajectory;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.OnBoardIO;
@@ -88,11 +89,11 @@ public class RobotContainer {
     // Note that all coordinates are in meters, and follow NWU conventions.
     Trajectory trajectory = TrajectoryGenerator.generateTrajectory(
         // Start at the origin facing the +X direction
-        new Pose2d(0, 0, new Rotation2d(0)),
+        new Pose2d(0.5, 2.5, new Rotation2d(0)),
         List.of(
-            new Translation2d(1.0, 0.0) 
+            new Translation2d(1.0, 2.5) 
         ),
-        new Pose2d(2.0, 0.0, new Rotation2d(0)), // left
+        new Pose2d(2.5, 2.5, new Rotation2d(0)), // left
         DrivetrainConstants.kTrajectoryConfig);
 
     return trajectory;
@@ -123,21 +124,22 @@ public class RobotContainer {
    *
    */
   public Trajectory navigateConesTrajectory() {
+    double xOffset = 0.5, yOffset = 2.5;
     // Note that all coordinates are in meters, and follow NWU conventions.
     Trajectory trajectory = TrajectoryGenerator.generateTrajectory(
         // Start at the origin facing the +X direction
-        new Pose2d(0, 0, new Rotation2d(0)),
+        new Pose2d(xOffset, yOffset, new Rotation2d(0)),
         List.of(
-            new Translation2d(0.5, 0.25), // 1 Left
-            new Translation2d(1.0, -0.25), // 2 Right
-            new Translation2d(1.5, 0.25),  // 3 Left
-            new Translation2d(2.0, 0.0),  // 4 Center
-            new Translation2d(1.5, -0.25), // 5  Right        
-            new Translation2d(1.0, 0.25),  // 6 Left
-            new Translation2d(0.7, -0.25)   // 7 Left
+            new Translation2d(xOffset + 0.5, yOffset + 0.25), // 1 Left
+            new Translation2d(xOffset + 1.0, yOffset + -0.25), // 2 Right
+            new Translation2d(xOffset + 1.5, yOffset +  0.25),  // 3 Left
+            new Translation2d(xOffset + 2.0, yOffset + 0.0),  // 4 Center
+            new Translation2d(xOffset + 1.5, yOffset + -0.25), // 5  Right        
+            new Translation2d(xOffset + 1.0, yOffset + 0.25),  // 6 Left
+            new Translation2d(xOffset + 0.7, yOffset + -0.25)   // 7 Left
             // new Translation2d(0.4, -0.20) 
         ),
-        new Pose2d(-0.0, -0.2, new Rotation2d(Math.PI)),
+        new Pose2d(xOffset + 0.0, yOffset + -0.2, new Rotation2d(Math.PI)),
         DrivetrainConstants.kTrajectoryConfig);
 
     return trajectory;
@@ -242,6 +244,7 @@ public class RobotContainer {
         .onFalse(new PrintCommand("Button A Released"));
 
     // Setup SmartDashboard options
+    m_chooser.addOption("Auto Routine Distance", new AutonomousDistance(m_drivetrain));
     m_chooser.setDefaultOption("Navigate Cones Trajectory", new RunRamseteTrajectory(m_drivetrain, navigateConesTrajectory()));
     m_chooser.addOption("Calibrate Trajectory", new RunRamseteTrajectory(m_drivetrain, calibrateTrajectory()));
     m_chooser.addOption("Drive Square Trajectory", new RunRamseteTrajectory(m_drivetrain, driveSquareTrajectory()));

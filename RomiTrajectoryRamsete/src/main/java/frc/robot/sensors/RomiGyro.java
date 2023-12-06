@@ -126,6 +126,12 @@ public class RomiGyro implements Gyro {
     }
   }
 
+  public void setAngle(double angle) {
+    if (m_simAngleZ != null) {
+      m_simAngleZ.set(angle);
+    }
+  }
+
   // These methods added to satisfy the interface requirements
   @Override
   public void close() throws Exception {

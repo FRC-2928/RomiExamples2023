@@ -5,9 +5,12 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
@@ -19,9 +22,16 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
+import edu.wpi.first.math.numbers.N2;
+import edu.wpi.first.math.system.LinearSystem;
+import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.wpilibj.simulation.AnalogGyroSim;
+import edu.wpi.first.wpilibj.simulation.DifferentialDrivetrainSim;
+import edu.wpi.first.wpilibj.simulation.EncoderSim;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.DrivetrainConstants;
@@ -64,7 +74,7 @@ public class Drivetrain extends SubsystemBase {
   private DifferentialDrivePoseEstimator m_poseEstimator;
 
   // Show a field diagram for tracking Pose estimation
-  private final Field2d m_estimatedField2d = new Field2d();
+  // private final Field2d m_estimatedField2d = new Field2d();
 
   // Create a slew rate filter to give more control over the speed from the joystick
   private final SlewRateLimiter m_filter = new SlewRateLimiter(0.5);
@@ -83,7 +93,25 @@ public class Drivetrain extends SubsystemBase {
     driveTab.add("Right Volts", 0)
       .withWidget(BuiltInWidgets.kGraph)
       .withPosition(3, 3)
-      .getEntry();     
+      .getEntry();   
+      
+  // Simulation classes help us simulate our robot
+  private static NetworkTableInstance inst = NetworkTableInstance.getDefault();
+  private static NetworkTable m_table = inst.getTable("Shuffleboard/Drivetrain");
+      
+  // private final AnalogGyroSim m_gyroSim = new AnalogGyroSim(m_gyro);
+  private final EncoderSim m_leftEncoderSim = new EncoderSim(m_leftEncoder);
+  private final EncoderSim m_rightEncoderSim = new EncoderSim(m_rightEncoder);
+  private final Field2d m_fieldSim = new Field2d();
+  
+  private final LinearSystem<N2, N2, N2> m_drivetrainSystem =
+      LinearSystemId.identifyDrivetrainSystem(1.98, 0.2, 1.5, 0.3);
+
+  private final DifferentialDrivetrainSim m_drivetrainSimulator =
+      new DifferentialDrivetrainSim(
+          m_drivetrainSystem, DCMotor.getCIM(2), 8, 
+          DrivetrainConstants.kTrackwidthMeters, DrivetrainConstants.kWheelDiameterMeters/2, 
+          null);  
 
   // -----------------------------------------------------------
   // Initialization
@@ -117,7 +145,7 @@ public class Drivetrain extends SubsystemBase {
                     VecBuilder.fill(0.1, 0.1, 0.1));
 
     SmartDashboard.putData("field", m_field2d);
-    SmartDashboard.putData("fieldEstimate", m_estimatedField2d);
+    // SmartDashboard.putData("fieldEstimate", m_estimatedField2d);
   }
 
   // -----------------------------------------------------------
@@ -144,11 +172,11 @@ public class Drivetrain extends SubsystemBase {
 
     // Send to Network Tables
     m_leftVolts.setDouble(leftVolts);
-    m_rightVolts.setDouble(rightVoltsCalibrated);
+    m_rightVolts.setDouble(rightVolts);
 
     // Apply the voltage to the wheels
     m_leftMotor.setVoltage(leftVolts);
-    m_rightMotor.setVoltage(-rightVoltsCalibrated); // We invert this to maintain +ve = forward
+    m_rightMotor.setVoltage(rightVoltsCalibrated); // We invert this to maintain +ve = forward
     m_diffDrive.feed();
   }
 
@@ -291,7 +319,8 @@ public class Drivetrain extends SubsystemBase {
    * @return The pose
    */
   public Pose2d getPose() {
-    return m_odometry.getPoseMeters();
+    return getSimPose();
+    // return m_odometry.getPoseMeters();
   }
 
   /**
@@ -358,15 +387,15 @@ public class Drivetrain extends SubsystemBase {
                       m_leftEncoder.getDistance(), 
                       m_rightEncoder.getDistance());
 
-    m_poseEstimator.update(m_gyro.getRotation2d(),
-                           m_leftEncoder.getDistance(),
-                           m_rightEncoder.getDistance());
+    // m_poseEstimator.update(m_gyro.getRotation2d(),
+    //                        m_leftEncoder.getDistance(),
+    //                        m_rightEncoder.getDistance());
 
     // Also apply vision measurements. We use 0.3 seconds in the past as an example -- on
     // a real robot, this must be calculated based either on latency or timestamps.
-    m_poseEstimator.addVisionMeasurement(
-        getLimelightPose(),
-        Timer.getFPGATimestamp() - 0.3);
+    // m_poseEstimator.addVisionMeasurement(
+    //     getLimelightPose(),
+    //     Timer.getFPGATimestamp() - 0.3);
 
     publishTelemetry();
   }
@@ -377,9 +406,9 @@ public class Drivetrain extends SubsystemBase {
   */
   public void publishTelemetry() {
     
-    m_field2d.setRobotPose(getPose());  
+    m_field2d.setRobotPose(getSimPose());  
     
-    m_estimatedField2d.setRobotPose(m_poseEstimator.getEstimatedPosition());
+    // m_estimatedField2d.setRobotPose(m_poseEstimator.getEstimatedPosition());
   
   
     // Offset the pose to start 1.5 meters on the Y axis
@@ -410,7 +439,60 @@ public class Drivetrain extends SubsystemBase {
     // Display the meters per/second for each wheel and the heading
     SmartDashboard.putNumber("Left Encoder Velocity", m_leftEncoder.getRate());
     SmartDashboard.putNumber("Right Encoder Velocity", m_rightEncoder.getRate());
+    SmartDashboard.putNumber("Left Encoder Position", m_leftEncoder.getDistance());
+    SmartDashboard.putNumber("Right Encoder Position", m_rightEncoder.getDistance());
+    SmartDashboard.putNumber("PoseX", getSimX());
+    SmartDashboard.putNumber("PoseY", getSimY());
     SmartDashboard.putNumber("Heading", getHeading());
+    SmartDashboard.putNumber("leftWheelSpeed", getLeftWheelSpeedSim());
+    SmartDashboard.putNumber("rightWheelSpeed", getRightWheelSpeedSim());
+    // SmartDashboard.putNumber("Sim Heading", getSimHeading());
+  }
+
+  // -----------------------------------------------------------
+  // Simulation
+  // -----------------------------------------------------------
+
+  public void simulationPeriodic() {
+    // To update our simulation, we set motor voltage inputs, update the
+    // simulation, and write the simulated positions and velocities to our
+    // simulated encoder and gyro. We negate the right side so that positive
+    // voltages make the right side move forward.
+    // m_drivetrainSimulator.setInputs(
+    //     m_leftMotor.get() * RobotController.getInputVoltage(),
+    //     m_rightMotor.get() * RobotController.getInputVoltage());
+    // m_drivetrainSimulator.update(0.02);
+
+    // m_leftEncoderSim.setDistance(m_drivetrainSimulator.getLeftPositionMeters());
+    m_leftEncoderSim.setRate(getLeftWheelSpeedSim());
+    // m_rightEncoderSim.setDistance(m_drivetrainSimulator.getRightPositionMeters());
+    m_rightEncoderSim.setRate(getRightWheelSpeedSim());
+    // m_gyro.setAngle(-m_drivetrainSimulator.getHeading().getDegrees());
+    m_gyro.setAngle(getSimHeading());
+  }
+
+  public double getSimX() {
+    return m_table.getEntry("poseX").getDouble(0);
+  }
+
+  public double getSimY() {
+    return m_table.getEntry("poseY").getDouble(0);
+  }
+
+  public double getSimHeading() {
+    return m_table.getEntry("heading").getDouble(0);
+  }
+
+  public Pose2d getSimPose() {
+    return new Pose2d(getSimX(), getSimY(), new Rotation2d(getSimHeading()));
+  }
+
+  public double getLeftWheelSpeedSim() {
+    return m_table.getEntry("leftWheelSpeed").getDouble(0);
+  }
+
+  public double getRightWheelSpeedSim() {
+    return m_table.getEntry("rightWheelSpeed").getDouble(0);
   }
 
 }
