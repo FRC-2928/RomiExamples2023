@@ -102,7 +102,7 @@ public class Drivetrain extends SubsystemBase {
   // private final AnalogGyroSim m_gyroSim = new AnalogGyroSim(m_gyro);
   private final EncoderSim m_leftEncoderSim = new EncoderSim(m_leftEncoder);
   private final EncoderSim m_rightEncoderSim = new EncoderSim(m_rightEncoder);
-  private final Field2d m_fieldSim = new Field2d();
+  // private final Field2d m_fieldSim = new Field2d();
   
   private final LinearSystem<N2, N2, N2> m_drivetrainSystem =
       LinearSystemId.identifyDrivetrainSystem(1.98, 0.2, 1.5, 0.3);

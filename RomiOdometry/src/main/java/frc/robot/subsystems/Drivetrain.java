@@ -81,6 +81,7 @@ public class Drivetrain extends SubsystemBase {
     m_odometry = new DifferentialDriveOdometry(m_gyro.getRotation2d(), 
                    getLeftDistanceMeters(), getRightDistanceMeters(), 
                    initialPose);
+    SmartDashboard.putData("field", m_field2d);
   }
 
   private void setupShuffleboard() {
@@ -167,7 +168,8 @@ public class Drivetrain extends SubsystemBase {
    */
   public DifferentialDriveWheelSpeeds getWheelSpeeds() {
     // Convert to wheel speeds
-    return new DifferentialDriveWheelSpeeds(m_leftEncoder.getRate(), m_rightEncoder.getRate());
+    return new DifferentialDriveWheelSpeeds(m_leftEncoder.getDistance(), 
+                                            m_rightEncoder.getDistance());
   }
   
   /**
@@ -233,6 +235,11 @@ public class Drivetrain extends SubsystemBase {
   // -----------------------------------------------------------
   @Override
   public void periodic() {
+    // Update the odometry in the periodic block
+    m_odometry.update(m_gyro.getRotation2d(), 
+                      m_leftEncoder.getDistance(), 
+                      m_rightEncoder.getDistance());
+
     // This method will be called once per scheduler run
     publishTelemetry();
   }
@@ -255,12 +262,7 @@ public class Drivetrain extends SubsystemBase {
     m_avgDistanceEntry.setDouble(getAverageDistanceMeters());
     m_headingEntry.setDouble(getHeading());
 
-    // Update the odometry in the periodic block
-    Pose2d currentPose = m_odometry.update(m_gyro.getRotation2d(), 
-                                           m_leftEncoder.getDistance(), 
-                                           m_rightEncoder.getDistance());
-    
-    m_field2d.setRobotPose(currentPose);  
+    m_field2d.setRobotPose(m_odometry.getPoseMeters());  
   }
 
 }
